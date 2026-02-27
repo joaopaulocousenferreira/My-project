@@ -1,0 +1,63 @@
+ 📤 1. O que é enviado para o Banco de Dados (Output)
+
+O envio ocorre principalmente no final de cada fase (PhaseController.EndPhase) ou quando o jogador clica em salvar. O sistema utiliza um padrão de chaves compostas: IDUsuario_NomeDaVariavel.
+
+ A. Dados de Perfil e Progressão Global
+
+| Chave (Key) | Tipo | Descrição |
+| --- | --- | --- |
+| ID_EmblemLevel | int | O nível atual do jogador (ex: 5). |
+| ID_EmblemXP | int | XP acumulado no nível atual (ex: 45). |
+| ID_EmblemXPToNext | int | Meta para o próximo nível (ex: 144). |
+| ID_EmblemTotalXP | int | Métrica de Ranking: Toda a experiência ganha na vida do jogador. |
+
+ B. Dados de Performance por Nível
+
+O sistema itera sobre o array de níveis e envia:
+| Chave (Key) | Tipo | Descrição |
+| :--- | :--- | :--- |
+| ID_Level_X_Unlocked | int (0 ou 1) | Se a fase X está disponível. |
+| ID_Level_X_Stars | int (0 a 3) | O recorde de estrelas obtido naquela fase específica. |
+
+ C. Metadados de Autenticação
+
+| Chave (Key) | Tipo | Descrição |
+| --- | --- | --- |
+| user_NomeUsuario | string | Armazena a senha hash/texto para validação de login. |
+| RegisteredUsersRegistry | string | Lista de IDs separados por vírgula (Ex: "Joao,Maria,Pedro") para busca no ranking. |
+
+---
+
+ 📥 2. O que se espera receber do Banco de Dados (Input)
+
+A recepção ocorre no momento do Login (AuthenticationManager.LoginSuccess) ou ao abrir a cena de seleção de fases.
+
+ A. Na Inicialização do Perfil
+
+O SaveLoadManager.LoadGame espera receber um conjunto de valores para reconstruir o objeto Emblem:
+
+* Expectativa: Valores inteiros maiores que zero.
+* Fallback (Segurança): Se o banco retornar nulo ou vazio, o sistema injeta Nível 1 e 0 XP automaticamente para evitar que o jogo trave.
+
+ B. Na Montagem do Mapa (Seleção de Fases)
+
+O LevelSelectController espera receber o estado de todos os botões:
+
+* Expectativa: Um booleano para interactable e um inteiro (0-3) para definir quais Sprites de Estrela (Ouro ou Cinza) serão renderizados.
+
+ C. Na Construção do Ranking
+
+O RankingUIController faz uma requisição em massa:
+
+* Input esperado: Uma lista de objetos ou um JSON contendo username e totalAccumulatedXP.
+* Processamento: O sistema espera que esses dados venham brutos para que ele possa executar o OrderByDescending localmente e exibir o Top 10.
+
+---
+
+ 🔄 3. Contrato de Sincronização (Resumo)
+
+Para que o sistema funcione sem erros, o Banco de Dados deve respeitar este contrato:
+
+1. Integridade de Tipo: O XP nunca deve ser enviado como string ou float, apenas int, para evitar erros de conversão no totalAccumulatedXP.
+2. Identificador Único: O currentUserID é o "DNA" da transação. Se o banco receber dados sem ID, a gravação deve ser rejeitada.
+3. Persistência de Recordes: O banco só deve sobrescrever Level_X_Stars se o novo valor for maior que o valor já existente (Lógica implementada no PhaseController).

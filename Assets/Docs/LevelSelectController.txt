@@ -1,0 +1,70 @@
+ 📄 Documentação Técnica: LevelSelectController
+
+Este controlador gerencia três sistemas principais simultâneos: a grade de níveis, o display de status rápido e os painéis de informações de perfil (Emblemas).
+
+ 1. Estrutura de Dados Auxiliar: LevelButtonUI
+
+Para evitar confusão na hierarquia da Unity, o script utiliza uma classe serializável para agrupar os elementos de cada botão de nível:
+
+* buttonComponent: O botão interativo.
+* unlockedContent: Container que exibe o número da fase e as estrelas.
+* lockIcon: Imagem do cadeado exibida quando a fase está bloqueada.
+* starsContainer: Objeto pai que contém as imagens das 3 estrelas.
+
+---
+
+ 2. Carregamento Dinâmico de Assets (Resources)
+
+Diferente de outros scripts, este utiliza a pasta Resources para carregar conteúdo em tempo de execução, permitindo que o jogo seja expansível sem que você precise arrastar centenas de sprites manualmente:
+
+* Sprites de Emblemas: Carrega Spritesheets de versões coloridas (desbloqueadas) e versões escuras/cadeado (bloqueadas).
+* Textos de Localização: Lê arquivos .txt para obter nomes e descrições dos níveis de emblema, usando o caractere ; como separador.
+
+---
+
+ 3. Sistemas de Interface
+
+ A. Seleção de Níveis (UpdateLevelButtons)
+
+Itera sobre o array de botões e sincroniza com os dados do GameManager:
+
+* Lógica de Bloqueio: Se isUnlocked for falso, o botão fica não interativo e o ícone de cadeado é ativado.
+* Pintura de Estrelas: O script percorre os filhos do starsContainer. Se o índice do filho for menor que starsEarned, ele aplica o Sprite Dourado; caso contrário, aplica o Sprite Cinza.
+
+ B. Display de Emblema (Canto da Tela)
+
+Uma versão compacta que mostra o ícone do emblema atual e uma barra de progresso de XP constante na tela de seleção.
+
+ C. Painéis Pop-up (Modais)
+
+1. Emblem Info Panel: Exibe detalhes do nível atual, incluindo nome personalizado e descrição longa carregada dos arquivos de texto.
+2. Unlocked Emblems Panel: Uma grade (Grid) que mostra todos os emblemas do jogo. Ele diferencia visualmente os que o jogador já conquistou dos que ainda estão bloqueados usando a lista de sprites "Locked".
+
+---
+
+ 4. Métodos de Navegação e Controle
+
+| Método | Função |
+| --- | --- |
+| SelectLevel(int) | Define qual fase o GameManager deve carregar e inicia a cena de gameplay. |
+| ToggleEmblemInfoPanel() | Abre/Fecha o painel de detalhes do perfil. |
+| PopulateEmblemGrid() | Limpa e recria dinamicamente os ícones na grade de conquistas. |
+| GoToMainMenu() | Retorna para a tela de título. |
+
+---
+
+ 5. Requisitos de Configuração no Editor
+
+Para o correto funcionamento, os seguintes arquivos devem existir na pasta Assets/Resources:
+
+1. Game/Emblemas/emblemas_spritesheet (Sprite Sheet).
+2. Game/Text/emblem_names.txt (Nomes separados por ;).
+3. Game/Text/emblem_descriptions.txt (Descrições separadas por ;).
+
+---
+
+ 6. Fluxo Lógico de Inicialização
+
+1. Awake: Carrega todos os sprites e textos da pasta Resources.
+2. Start: Esconde painéis de interface e executa a primeira atualização visual dos botões e do XP.
+3. Update: A interface é atualizada conforme a interação do usuário (abrir/fechar painéis).

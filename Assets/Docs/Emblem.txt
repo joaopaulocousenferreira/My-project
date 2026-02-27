@@ -1,0 +1,56 @@
+ 📄 Documentação Técnica: Emblem (Classe de Dados)
+
+Diferente dos outros componentes documentados, a classe Emblem não é um MonoBehaviour. Ela é uma classe puramente lógica marcada como [System.Serializable], o que permite que seus dados sejam editados no Inspector da Unity e facilmente convertidos para salvamento.
+
+ 1. Estrutura de Atributos
+
+| Atributo | Tipo | Descrição |
+| --- | --- | --- |
+| emblemName | string | Nome base do emblema (pode ser expandido para nomes dinâmicos). |
+| currentLevel | int | O nível atual de prestígio do jogador. |
+| currentXP | int | Experiência acumulada no nível atual (reseta ao subir de nível). |
+| xpToNextLevel | int | Meta necessária para atingir o próximo nível. |
+| totalAccumulatedXP | int | Histórico Vitalício: Soma total de todo o XP ganho desde o início do jogo (usado para Rankings). |
+
+---
+
+ 2. Lógica de Evolução (AddXP)
+
+O método AddXP gerencia dois fluxos simultâneos quando o jogador recebe uma recompensa:
+
+ A. Acúmulo de Valor Real
+
+O XP ganho é adicionado ao totalAccumulatedXP. Este valor nunca diminui, servindo como a métrica absoluta de esforço do jogador para o sistema de classificação global.
+
+ B. Ciclo de Level Up (Consumo de XP)
+
+O script utiliza um loop while para verificar se o ganho de XP foi suficiente para subir um ou mais níveis de uma vez:
+
+1. Verificação: Se currentXP for maior ou igual à meta (xpToNextLevel).
+2. Incremento: O currentLevel aumenta em 1.
+3. Dedução: O valor da meta antiga é subtraído do currentXP (o "resto" sobra para o próximo nível).
+4. Curva de Dificuldade: A meta para o próximo nível aumenta em 20% (* 1.2f). O uso de Mathf.FloorToInt garante que o resultado seja sempre um número inteiro.
+
+---
+
+ 3. Exemplo de Comportamento Prático
+
+Se um jogador Nível 1 (precisando de 100 XP) ganhar 250 XP de uma vez:
+
+* Total Acumulado: 250 XP.
+* Primeiro Level Up: Sobe para Nível 2. Sobram 150 XP. A meta sobe para 120 XP.
+* Segundo Level Up: Sobe para Nível 3. Sobram 30 XP. A meta sobe para 144 XP.
+* Resultado Final: Jogador Nível 3 com 30/144 XP.
+
+---
+
+ 4. Integração com o Sistema
+
+* SaveLoadManager: Salva o totalAccumulatedXP separadamente para garantir que o ranking reflita o progresso real, mesmo que o jogador esteja em níveis com metas muito altas.
+* LevelSelectController: Usa o currentXP e xpToNextLevel para preencher as barras de progresso (Sliders) na interface.
+
+---
+
+ 5. Resumo Funcional
+
+A classe Emblem encapsula a matemática do jogo. Ela separa a experiência de progresso (nível atual) da experiência competitiva (total acumulado), garantindo que a curva de dificuldade cresça de forma orgânica e previsível.

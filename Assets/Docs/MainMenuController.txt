@@ -1,0 +1,47 @@
+ 📄 Documentação Técnica: MainMenuController
+
+O MainMenuController serve como o ponto de entrada principal do aplicativo. Sua função é direcionar o fluxo de navegação, permitindo que o jogador escolha entre continuar um progresso existente ou resetar completamente o estado do jogo.
+
+ 1. Funcionalidades Principais
+
+ Iniciar/Continuar Jogo (StartGame)
+
+Este método é responsável pela transição simples para o mapa de níveis.
+
+* Ação: Utiliza o SceneManager para carregar a cena chamada "SelecaoDeFase".
+* Preservação de Dados: Não interfere nos dados salvos no disco ou na memória. O progresso do jogador (XP, níveis desbloqueados) permanece intacto, permitindo que o GameManager e o SaveLoadManager carreguem as informações conforme o planejado.
+
+ Novo Jogo (NewGame)
+
+Este método executa um "Hard Reset" no estado do aplicativo.
+
+* Ação de Limpeza: Invoca PlayerPrefs.DeleteAll(), o que remove permanentemente todas as chaves de registro (XP, Níveis, Estrelas, IDs de usuários).
+* Reinicialização da Sessão: Em vez de carregar a seleção de fases, ele recarrega a cena do Menu Principal atual (SceneManager.GetActiveScene().name).
+* Importância do Recarregamento: Isso força o reinício dos Singletons e scripts globais. Ao recarregar a cena após a limpeza do PlayerPrefs, os managers buscarão dados que não existem mais, redefinindo-se para os valores padrão de fábrica (Nível 1, 0 XP, etc.).
+
+---
+
+ 2. Fluxo de Navegação
+
+```
+graph TD
+    A[Main Menu] -->|StartGame| B(Seleção de Fases)
+    A -->|NewGame| C[Limpar PlayerPrefs]
+    C --> D[Recarregar Menu]
+    D --> A
+
+```
+
+---
+
+ 3. Requisitos de Configuração
+
+Para que o controlador funcione conforme o esperado na Unity:
+
+1. Build Settings: A cena "SelecaoDeFase" deve estar obrigatoriamente adicionada à lista de cenas no menu File > Build Settings.
+2. Mapeamento de Botões: No Inspector da Unity, os componentes de Button (UI) devem ter seus eventos OnClick vinculados aos respectivos métodos públicos deste script.
+
+ 4. Observações de Segurança
+
+* Irreversibilidade: O método NewGame não possui uma janela de confirmação (pop-up de "Tem certeza?"). Uma vez clicado, os dados são apagados instantaneamente.
+* Nomenclatura: O script depende da string exata "SelecaoDeFase". Qualquer alteração no nome do arquivo da cena sem a atualização correspondente no código causará um erro de execução.

@@ -1,0 +1,62 @@
+📄 Documentação de Sistema: SaveLoadManager
+
+O SaveLoadManager é uma classe estática responsável por mediar o fluxo de dados entre o estado atual do jogo (em memória) e o armazenamento persistente do dispositivo (em disco), utilizando a API PlayerPrefs da Unity.
+
+ 1. Estrutura de Dados Interna
+
+RankingEntry (Classe de Suporte)
+
+Uma estrutura simples usada para representar um jogador na lista de classificação.
+
+* username: Identificador único do jogador.
+* totalXP: O valor acumulado de experiência real (usado para ordenação).
+* emblemLevel: O nível atual do emblema do jogador.
+
+---
+
+ 2. Fluxo de Salvamento (SaveGame)
+
+Este método captura os dados dos Singletons GameManager e EmblemManager e os grava no disco.
+
+* Validação: Verifica se as instâncias dos Managers existem e se o userID atual não está vazio.
+* Dados do Emblema: Salva Nível Atual, XP Atual, XP necessário para o próximo nível e o XP Total Acumulado (chave: _EmblemTotalXP).
+* Dados de Progressão (Níveis): Itera pelo array de níveis no GameManager.
+* Salva o estado de desbloqueio (isUnlocked) convertido para inteiro (1 ou 0).
+* Salva a quantidade de estrelas obtidas (starsEarned) em cada fase.
+
+
+* Finalização: Define a flag HasPlayedBefore e executa o PlayerPrefs.Save() para garantir a escrita imediata.
+
+---
+
+ 3. Fluxo de Carregamento (LoadGame)
+
+Restaura o estado do jogo com base no userID fornecido.
+
+* Inicialização: Atribui o userID aos Managers globais para sincronizar o contexto.
+* Restauração do Emblema: Recupera os valores de nível e XP. Caso não existam dados prévios, utiliza valores padrão (Lvl 1, 0 XP, 100 XP para o próximo).
+* Restauração de Níveis: Percorre a lista de níveis definida no GameManager.
+* Aplica a lógica de desbloqueio padrão: se o bloqueio de níveis estiver desativado ou se for a primeira fase (índice 0), o nível inicia desbloqueado.
+* Sobrescreve esses valores com os dados recuperados do PlayerPrefs.
+
+---
+
+ 4. Sistema de Ranking (GetRankingList)
+
+Gera uma lista organizada de jogadores com base nos dados locais.
+
+1. Recuperação do Registro: Lê a string RegisteredUsersRegistry que contém os nomes de todos os usuários criados.
+2. Processamento:
+* Divide a string por vírgulas para obter IDs individuais.
+* Ignora usuários vazios ou anônimos.
+* Busca individualmente o _EmblemTotalXP e o _EmblemLevel de cada usuário.
+
+
+3. Ordenação: Utiliza LINQ (OrderByDescending) para organizar a lista do maior XP para o menor.
+4. Retorno: Entrega uma List<RankingEntry> pronta para ser exibida na UI.
+
+---
+
+ 5. Utilidades
+
+* DeleteAllProgress: Um comando de depuração/reset que limpa todas as chaves do PlayerPrefs do sistema, resetando o jogo para o estado de fábrica para todos os usuários.

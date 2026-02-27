@@ -1,0 +1,68 @@
+ 📄 Documentação Técnica: AuthenticationManager
+
+O AuthenticationManager atua como o porteiro do jogo. Ele decide quais botões o usuário vê (Login, Ranking, Jogar como Convidado) com base no estado de autenticação e no modo de operação configurado no Inspector.
+
+ 1. Configurações de Operação (Enums)
+
+| Configuração | Modos Disponíveis | Descrição |
+| --- | --- | --- |
+| UI Mode | Anonymous, Login, Hybrid | Define se o jogo permite convidados, exige conta ou aceita ambos. |
+| Backend Mode | Local, Cloud | Define se as senhas/dados ficam no PlayerPrefs ou em um servidor externo. |
+
+---
+
+ 2. Fluxo de Inicialização e Estados de UI
+
+Ao iniciar a cena, o script verifica se o GameManager já possui um currentUserID válido:
+
+ A. Estado Logado (Identificado)
+
+* Ativa: Botão "Continuar", Botão de Informações do Usuário e Botão de Ranking (Troféu).
+* Desativa: Botão de início anônimo e campos de preenchimento de login.
+* Ação: O botão de perfil é configurado para abrir o painel de estatísticas (UpdateLoggedInInfoPanel).
+
+ B. Estado Deslogado (Visitante)
+
+* Ativa: Conforme o uiMode. No modo Hybrid, mostra o botão de convidado e o de login.
+* Desativa: Botão de Ranking e painel de informações.
+* Ação: O botão de perfil é configurado para abrir o formulário de entrada de credenciais.
+
+---
+
+ 3. Sistema de Login e Registro Local
+
+No modo LocalPlayerPrefs, o script utiliza uma lógica simplificada:
+
+1. Chave de Usuário: Salva senhas com o prefixo user_ (Ex: user_Carlos).
+2. Registro Automático: Se o nome de usuário não existe, ele cria um novo registro instantaneamente com a senha fornecida.
+3. Registro Mestre: Adiciona o novo nome à string RegisteredUsersRegistry para que o SaveLoadManager possa incluí-lo no ranking global posteriormente.
+
+---
+
+ 4. Gestão de Painéis (Modais)
+
+O script gerencia a alternância de três painéis principais, garantindo que eles nunca se sobreponham:
+
+* LoginPanel: Entrada de dados.
+* LoggedInInfoPanel: Exibe o progresso atual (Nível, Barra de XP e Ícone do Emblema).
+* RankingPanel: Exibe a lista de classificação.
+
+ Regra de Exclusão: Sempre que um painel é aberto (Toggle), os outros dois são explicitamente desativados para manter a interface limpa.
+
+---
+
+ 5. Integração e Sucesso de Login (LoginSuccess)
+
+Quando o login é validado, o script executa uma sequência de 5 passos:
+
+1. Identificação: Define o currentUserID no GameManager e EmblemManager.
+2. Carregamento: Chama SaveLoadManager.LoadGame(username) para trazer o progresso do disco.
+3. Assets: Atualiza o ícone do usuário usando o emblemSprites carregado via Resources.
+4. Feedback: Exibe mensagem de boas-vindas.
+5. Transição: Encaminha o jogador para a cena "SelecaoDeFase".
+
+---
+
+ 6. Logout e Reset
+
+O método Logout limpa as referências de ID nos Managers globais, reinicia o objeto Emblem para os valores padrão (Nível 1) e recarrega a cena inicial para garantir que nenhum resquício de dados do usuário anterior permaneça na interface.

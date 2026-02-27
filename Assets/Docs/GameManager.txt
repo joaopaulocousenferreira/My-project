@@ -1,0 +1,62 @@
+ 📄 Documentação Técnica: GameManager
+
+O GameManager utiliza o padrão Singleton e a instrução DontDestroyOnLoad, o que significa que ele é criado apenas uma vez e sobrevive à troca de cenas, mantendo os dados intactos desde a tela de login até a conclusão das fases.
+
+ 1. Estrutura de Dados: LevelData
+
+Uma classe auxiliar serializável que armazena o status individual de cada fase:
+
+* isUnlocked: Define se o nível está acessível para o jogador.
+* starsEarned: Armazena o recorde de estrelas (0 a 3) obtido naquela fase.
+
+---
+
+ 2. Configurações Globais (Inspector)
+
+O script expõe variáveis que permitem alterar o comportamento do jogo sem mexer no código:
+
+* requiresLogin: Alterna entre um sistema fechado (exige login) ou um modo aberto/anônimo.
+* useLevelLocking: Define a regra de progressão. Se true, o jogador deve vencer uma fase para liberar a próxima. Se false, todo o conteúdo está liberado desde o início.
+
+---
+
+ 3. Lógica de Inicialização e Singleton
+
+O método Awake executa uma Decisão Inteligente para evitar sobrescrever dados salvos:
+
+1. Garantia de Unicidade: Se já existir um GameManager, o novo é destruído. Se for o primeiro, ele se torna a instance global.
+2. Detecção de Save:
+* Com Progresso: Se a chave HasPlayedBefore existir no PlayerPrefs, o Manager apenas prepara o array de níveis, mas não define valores. Ele aguarda que o SaveLoadManager injete os dados reais após o login.
+* Sem Progresso: Se for a primeira execução, ele chama InitializeLevelData() para configurar o estado inicial (ex: desbloquear apenas a Fase 1).
+
+
+
+---
+
+ 4. Memória Temporária (Buffer de Cenas)
+
+O GameManager funciona como um "pacote de dados" entre as cenas:
+
+| Variável | Função |
+| --- | --- |
+| currentUserID | Identifica quem está jogando para que o Save ocorra no arquivo correto. |
+| currentLevelToLoad | Armazena a escolha feita no LevelSelect para ser lida pelo PhaseController. |
+| lastPhaseScore/XP/Errors | Armazena o desempenho da última partida para ser exibido na tela de resultados. |
+
+---
+
+ 5. O "Diário de Bordo": Array levels
+
+Este array é o mapa completo da jornada do usuário.
+
+* Tamanho padrão: Configurado para 6 níveis (pode ser ajustado no código).
+* Persistência: Embora os dados fiquem aqui durante o jogo, eles só são gravados permanentemente no disco quando o SaveLoadManager.SaveGame() é chamado (geralmente ao final de uma fase ou ao sair).
+
+---
+
+ 6. Resumo de Responsabilidades
+
+1. Identidade: Sabe quem é o jogador atual (currentUserID).
+2. Navegação: Sabe qual fase deve ser montada a seguir.
+3. Progresso: Sabe quais fases foram vencidas e qual o recorde de cada uma.
+4. Configuração: Define se o jogo é linear (bloqueado) ou livre.

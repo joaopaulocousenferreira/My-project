@@ -1,0 +1,42 @@
+ 📄 Documentação Técnica: `EmblemManager`
+
+O EmblemManager é um controlador de dados persistente que atua como o "perfil" do usuário logado. Ele utiliza o padrão Singleton para garantir que as informações de nível e XP sejam acessíveis de qualquer lugar do jogo (como na tela de seleção de fases ou no final de uma partida).
+
+ 1. Arquitetura e Persistência
+
+Assim como o GameManager, este script utiliza a instrução DontDestroyOnLoad. Isso permite que o progresso de XP acumulado em uma fase seja mantido na memória ao carregar a próxima cena, até que o SaveLoadManager efetue a gravação definitiva no disco.
+
+---
+
+ 2. Atributos Principais
+
+* currentUserID (string): Armazena o ID do jogador ativo. Esta variável é fundamental para que o sistema de salvamento saiba em qual "gaveta" do PlayerPrefs deve buscar ou guardar o XP e o nível do emblema.
+* playerEmblem (Emblem): Uma referência à classe lógica Emblem. É este objeto que contém os cálculos reais (como a função AddXP, o nível atual e quanto falta para o próximo nível).
+
+---
+
+ 3. Ciclo de Vida e Inicialização (Awake)
+
+O script realiza uma configuração crítica de segurança assim que o jogo inicia:
+
+1. Validação de Singleton: Garante que apenas um EmblemManager exista. Se uma nova cena tentar criar outro, ele se destrói imediatamente para não duplicar os dados de XP.
+2. Prevenção de NullReference: Se o objeto playerEmblem não tiver sido arrastado no Inspector, o script cria automaticamente uma nova instância (new Emblem()). Isso evita que o jogo trave quando o primeiro XP for ganho.
+
+---
+
+ 4. Integração com o Ecossistema
+
+O EmblemManager não trabalha sozinho; ele é o ponto de encontro de vários outros scripts:
+
+| Script Interagente | Relação com o EmblemManager |
+| --- | --- |
+| PhaseController | Chama instance.playerEmblem.AddXP() ao finalizar uma fase. |
+| SaveLoadManager | Lê os dados de playerEmblem para salvar e injeta os valores carregados do disco ao iniciar. |
+| LevelSelectController | Lê playerEmblem para atualizar as barras de progresso (Slider) e os ícones de emblema na UI. |
+| AuthenticationManager | Define o currentUserID após o login bem-sucedido. |
+
+---
+
+ 5. Resumo de Funcionamento
+
+> O EmblemManager funciona como a "identidade visual e de progresso" do jogador. Ele mantém vivo o objeto Emblem, garantindo que cada ponto de XP ganho seja contabilizado no perfil correto (currentUserID) e esteja disponível para consulta em todas as interfaces do jogo.

@@ -1,0 +1,61 @@
+ 📄 Documentação Técnica: `ResultsScreenController`
+
+O ResultsScreenController atua como a ponte visual entre os dados de desempenho processados pelo jogo e o feedback direto para o jogador. Ele lê informações temporárias armazenadas no GameManager e as traduz em elementos gráficos (estrelas e texto).
+
+ 1. Referências e Atributos de UI
+
+O script utiliza componentes específicos para controle de interface:
+
+* xpGainedText (TextMeshProUGUI): Exibe a recompensa de experiência em formato de texto.
+* stars (GameObject[]): Um array (lista) que deve conter os 3 objetos visuais das estrelas na hierarquia da cena.
+* backButton (Button): Referência ao botão físico que permite a saída da tela de resultados.
+
+---
+
+ 2. Ciclo de Vida e Inicialização
+
+Ao carregar a cena (Start), o controlador realiza as seguintes etapas:
+
+1. Configuração de Eventos: Atribui programaticamente a função GoToLevelSelect ao evento de clique do botão de voltar.
+2. Validação do GameManager:
+* Caso o GameManager não seja encontrado (ex: ao testar a cena de resultados isoladamente), o script injeta dados fictícios (100 XP, 2 Erros) via DisplayResults para evitar erros de execução.
+
+
+3. Coleta de Dados: Recupera as variáveis lastPhaseErrors e lastPhaseXpGained persistidas temporariamente no GameManager pela fase anterior.
+
+---
+
+ 3. Lógica de Processamento de Resultados
+
+ Cálculo de Performance (CalculateStars)
+
+O sistema de pontuação é baseado em uma lógica de faixas de erro:
+
+| Erros Cometidos | Estrelas Ganhas | Avaliação |
+| --- | --- | --- |
+| 0 | 3 | Perfeito |
+| 1 a 2 | 2 | Bom |
+| 3 a 4 | 1 | Razoável |
+| 5 ou mais | 0 | Falha |
+
+ Exibição Visual (DisplayStars)
+
+A ativação das estrelas utiliza um loop que compara o índice do objeto no array com a quantidade calculada:
+
+* Se o jogador ganhou 2 estrelas, os objetos nos índices 0 e 1 são ativados (SetActive(true)), e o índice 2 permanece desativado.
+
+---
+
+ 4. Métodos de Navegação
+
+* GoToLevelSelect(): Utiliza o SceneManager para carregar a cena nomeada "SelecaoDeFase". Este método é público, permitindo que seja chamado tanto pelo listener interno quanto por eventos externos no Inspector da Unity.
+
+---
+
+ 5. Resumo de Dependências
+
+Para que este script funcione corretamente, a cena deve conter:
+
+1. Um objeto EventSystem (padrão da UI Unity).
+2. Um GameManager ativo na hierarquia (ou carregado via Singleton).
+3. As strings de nome de cena (ex: "SelecaoDeFase") devem coincidir exatamente com os nomes no Build Settings.

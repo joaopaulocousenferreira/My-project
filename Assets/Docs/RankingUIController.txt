@@ -1,0 +1,66 @@
+ 📄 Documentação Técnica: `RankingUIController`
+
+O RankingUIController é um componente de interface que converte dados lógicos (obtidos do SaveLoadManager) em elementos visuais dinâmicos dentro de um sistema de rolagem (Scroll View).
+
+ 1. Referências de Configuração
+
+* rankingListContainer (Transform): Deve apontar para o objeto Content de um Scroll View. É o "pai" onde todas as linhas do ranking serão inseridas.
+* rankingItemPrefab (GameObject): Um modelo pré-configurado de UI (Prefab) que contém os campos de texto para posição, nome e XP.
+
+---
+
+ 2. Fluxo de Execução e Ciclo de Vida
+
+ Atualização Automática (OnEnable)
+
+O script utiliza o método nativo OnEnable. Isso garante que, toda vez que o painel de ranking for ativado (ex: o jogador clica no botão "Ranking"), a lista seja atualizada com os dados mais recentes sem necessidade de chamadas manuais externas.
+
+ Processo de Renderização (UpdateRankingDisplay)
+
+O método principal segue três etapas lógicas:
+
+1. Limpeza (Reset):
+* Itera sobre todos os filhos do rankingListContainer e os destrói. Isso evita que itens de aberturas anteriores do painel se acumulem ou se dupliquem.
+
+
+2. Coleta de Dados:
+* Solicita ao SaveLoadManager.GetRankingList() a lista de jogadores já ordenada por XP.
+* Se a lista estiver vazia, o processo é interrompido para evitar erros.
+
+
+3. Instanciação e Preenchimento:
+* O script percorre a lista de dados.
+* Limite: Está configurado para exibir apenas os Top 10 jogadores.
+* Para cada jogador, um novo rankingItemPrefab é criado dentro do container.
+
+
+
+---
+
+ 3. Manipulação de Elementos Internos (UI)
+
+Diferente de referências diretas via Inspector, este script busca os componentes de texto dentro do Prefab instanciado usando nomes específicos:
+
+* PosText: Recebe o número da posição (ex: #1, #2).
+* NameText: Recebe o nome do usuário (entry.username).
+* XpText: Recebe o valor total de experiência (entry.totalXP + " XP").
+
+Padronização Visual: O script força programaticamente a cor dos textos para Cinza (Color.gray) ao serem criados, garantindo consistência visual independente das configurações originais do Prefab.
+
+---
+
+ 4. Requisitos de Hierarquia (Setup)
+
+Para que o script localize os textos corretamente, o Prefab (rankingItemPrefab) deve possuir exatamente esta estrutura de nomes em seus objetos filhos:
+
+| Nome do Objeto Filho | Componente Necessário |
+| --- | --- |
+| PosText | TextMeshProUGUI |
+| NameText | TextMeshProUGUI |
+| XpText | TextMeshProUGUI |
+
+---
+
+ 5. Resumo de Funcionamento
+
+ O componente atua de forma reativa: ao ser ativado, ele limpa o lixo visual anterior, busca os dados persistidos no disco, filtra os 10 melhores e os desenha na tela aplicando uma formatação de cor cinza.

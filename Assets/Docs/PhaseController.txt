@@ -1,0 +1,65 @@
+ 📄 Documentação Técnica: PhaseController
+
+O PhaseController atua como o "diretor" da partida. Ele é responsável por carregar o conteúdo correto do nível, monitorar o desempenho do jogador (acertos e erros) e processar as consequências da vitória (XP, estrelas e desbloqueio de novas fases).
+
+ 1. Configuração e Inicialização
+
+O script utiliza um sistema de Containers de Nível para gerenciar o conteúdo visual.
+
+* levelObjects (GameObject[]): Uma lista de objetos na hierarquia da cena. Cada objeto representa um nível completo.
+* totalItemsToDrop: Define a condição de vitória (quantos itens o jogador precisa encaixar corretamente para vencer).
+
+Fluxo de Inicialização (Start):
+
+1. Consulta o GameManager.instance.currentLevelToLoad para saber qual fase o jogador escolheu na tela anterior.
+2. Chama o método LoadLevelData para ativar o objeto correspondente e definir as regras de vitória.
+
+---
+
+ 2. Gerenciamento de Gameplay (Drag & Drop)
+
+O controller expõe métodos públicos que devem ser chamados pelos scripts de interação (os itens que o jogador arrasta):
+
+| Método | Ação Realizada |
+| --- | --- |
+| OnWrongDrop() | Incrementa o errorCount. |
+| OnCorrectDrop() | Incrementa o correctDropCount. Se atingir o totalItemsToDrop, dispara o fim da fase. |
+| EndPhaseManually() | Função de debug que aceita um valor de um campo de texto (TMP_InputField) para testar o encerramento da fase sem jogar. |
+
+---
+
+ 3. Lógica de Finalização (EndPhase)
+
+Este é o método mais crítico do script, pois consolida todo o progresso do jogador em 7 etapas:
+
+1. Cálculo de Recompensas:
+* Score: Começa em 1000, subtraindo 200 por erro.
+* XP: Começa em 150, subtraindo 25 por erro.
+* Estrelas: Baseado na tabela de erros (0 erros = 3 estrelas, etc.).
+
+
+2. Atualização do Emblema: Adiciona o XP ganho ao EmblemManager.
+3. Persistência de Recordes: Atualiza as estrelas no GameManager apenas se o novo resultado for melhor que o anterior.
+4. Desbloqueio de Progressão: Se o jogador obtiver 2 ou mais estrelas, o script marca o próximo nível como desbloqueado (isUnlocked = true).
+5. Transferência de Dados: Preenche as variáveis "LastPhase" do GameManager para que a tela de resultados possa lê-las.
+6. Salvamento Automático: Chama o SaveLoadManager.SaveGame() para gravar tudo permanentemente no disco.
+7. Transição: Carrega a cena "ConclusaoFase".
+
+---
+
+ 4. Resumo das Regras de Negócio
+
+* Condição de Vitória: Encaixar todos os itens definidos em totalItemsToDrop.
+* Penalidade: Erros diminuem drasticamente tanto a pontuação quanto o XP recebido.
+* Critério de Avanço: O jogador precisa de um desempenho "Bom" (no máximo 2 erros) para liberar o nível seguinte.
+
+---
+
+ 5. Considerações para Expansão
+
+Ao adicionar novos níveis ao jogo, você deve atualizar o método LoadLevelData:
+
+```
+if (levelNumber == 3) { totalItemsToDrop = 5; } // Exemplo de nova regra
+
+```
