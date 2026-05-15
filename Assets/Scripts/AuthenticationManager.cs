@@ -2,16 +2,16 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
 using UnityEngine.UI;
-using System.Collections;
-using System.Linq; // Necessário para ordenar os sprites
+using System.Linq;
+using System;
 
-// --- Enums de Configuração ---
 public enum UIMode
 {
     AnonymousOnly,
     LoginOnly,
     Hybrid
 }
+
 public enum BackendMode
 {
     LocalPlayerPrefs,
@@ -20,59 +20,38 @@ public enum BackendMode
 
 public class AuthenticationManager : MonoBehaviour
 {
-    [Header("Configuração Principal do Template")]
+    [Header("Configuração Principal")]
     public UIMode uiMode = UIMode.Hybrid;
     public BackendMode backendMode = BackendMode.LocalPlayerPrefs;
 
-    [Header("Configuração da API (Nuvem)")]
-    public string apiEndpoint = "https://sua-api.com/api/";
-    public string apiKey = "sua-chave-api-secreta";
+    [Header("Botão de Ação Híbrido (Exigência do Professor)")]
+    [Tooltip("Este único botão executará o 'Jogar Anônimo' se deslogado, ou 'Continuar' se logado.")]
+    public Button actionPlayButton;
 
-    [Header("Referências da UI (Deslogado)")]
-    [Tooltip("Botão principal para 'Jogar como Convidado'")]
-    public Button anonymousStartButton;
-    [Tooltip("Botão que ABRE o painel de login. Pode ser o mesmo objeto do 'Show User Info Button'.")]
-    public Button showLoginPanelButton;
-    [Tooltip("O painel completo que contém os campos de login/registo")]
-    public GameObject loginPanel;
-
-    [Header("Referências da UI (Logado)")]
-    [Tooltip("Botão que substitui o 'Jogar Anônimo' quando logado")]
-    public Button continueButton;
-    [Tooltip("Botão que ABRE o painel de info do utilizador. Pode ser o mesmo objeto do 'Show Login Panel Button'.")]
-    public Button showUserInfoButton;
-    [Tooltip("O painel que mostra as informações do utilizador já logado")]
-    public GameObject loggedInInfoPanel;
+    // --- VARIÁVEIS PRIVADAS (Ocultas do Inspector, mapeadas automaticamente) ---
+    private Button showLoginPanelButton;
+    private GameObject loginPanel;
+    private Button showUserInfoButton;
+    private GameObject loggedInInfoPanel;
+    private Button showRankingButton; 
+    private GameObject rankingPanel;
+    private Button closeRankingButton;
     
-    // --- UI DO RANKING ---
-    [Header("UI de Ranking (Só aparece Logado)")]
-    [Tooltip("O botão (Troféu) que abre o ranking.")]
-    public Button showRankingButton; 
-    [Tooltip("O painel que contém a lista de classificação.")]
-    public GameObject rankingPanel;
-    [Tooltip("O botão 'X' dentro do painel de ranking.")]
-    public Button closeRankingButton;
-    // --------------------
+    private TMP_InputField usernameInput;
+    private TMP_InputField passwordInput;
+    private TextMeshProUGUI errorText;
+    private Button loginRegisterButton;
+    private Button closeLoginPanelButton;
 
-    [Header("Referências do Painel de Login")]
-    public TMP_InputField usernameInput;
-    public TMP_InputField passwordInput;
-    public TextMeshProUGUI errorText;
-    public Button loginRegisterButton;
-    public Button closeLoginPanelButton;
-
-    [Header("Referências do Painel de Info (Logado)")]
-    public TextMeshProUGUI welcomeText;
-    public Image loggedInUserEmblemIcon; // Ícone do emblema no painel
-    public TextMeshProUGUI loggedInUserLevelText; // Texto do nível
-    public Slider loggedInUserXpBar;
-    public TextMeshProUGUI loggedInUserXpText;
-    public Button logoutButton;
-    public Button closeInfoPanelButton;
+    private TextMeshProUGUI welcomeText;
+    private Image loggedInUserEmblemIcon; 
+    private TextMeshProUGUI loggedInUserLevelText; 
+    private Slider loggedInUserXpBar;
+    private TextMeshProUGUI loggedInUserXpText;
+    private Button logoutButton;
+    private Button closeInfoPanelButton;
 
     private const string ANONYMOUS_USER_ID = "local_anonymous_user";
-    
-    // Cache dos sprites dos emblemas
     private Sprite[] emblemSprites;
 
     void Awake()
@@ -82,21 +61,18 @@ public class AuthenticationManager : MonoBehaviour
 
     void Start()
     {
-        // --- Conexões Estáticas ---
-        if (anonymousStartButton != null) anonymousStartButton.onClick.AddListener(StartAnonymousGame);
+        // 1. Mapeamento Automático Profundo
+        CarregarComponentes();
+
+        // 2. Conexões Estáticas Básicas
         if (loginRegisterButton != null) loginRegisterButton.onClick.AddListener(OnLoginRegisterClick);
         if (closeLoginPanelButton != null) closeLoginPanelButton.onClick.AddListener(ToggleLoginPanel);
-        
-        if (continueButton != null) continueButton.onClick.AddListener(ContinueGame);
         if (logoutButton != null) logoutButton.onClick.AddListener(Logout);
         if (closeInfoPanelButton != null) closeInfoPanelButton.onClick.AddListener(ToggleLoggedInInfoPanel);
-
-        // Conexão do Ranking
         if (showRankingButton != null) showRankingButton.onClick.AddListener(ToggleRankingPanel);
         if (closeRankingButton != null) closeRankingButton.onClick.AddListener(ToggleRankingPanel);
 
-        // --- Lógica de Decisão de Estado ---
-        // Verifica se existe utilizador E se ele NÃO é o anônimo.
+        // 3. Avaliação de Estado Absoluto
         if (GameManager.instance != null && 
             !string.IsNullOrEmpty(GameManager.instance.currentUserID) && 
             GameManager.instance.currentUserID != ANONYMOUS_USER_ID)
@@ -109,6 +85,156 @@ public class AuthenticationManager : MonoBehaviour
         }
     }
 
+    // --- O NÚCLEO DE MAPEAMENTO (RESOLUÇÃO DO PROBLEMA) ---
+    private void CarregarComponentes()
+    {
+        // Painéis e Botões Principais
+        showLoginPanelButton = EncontrarUI<Button>("ShowLoginPanelButton");
+        showUserInfoButton   = EncontrarUI<Button>("ShowLoginPanelButton"); 
+        loginPanel           = EncontrarUI<GameObject>("LoginPanel", isGameObject: true) as GameObject;
+        loggedInInfoPanel    = EncontrarUI<GameObject>("LoggedInInfoPanel", isGameObject: true) as GameObject;
+        rankingPanel         = EncontrarUI<GameObject>("RankingPainel", isGameObject: true) as GameObject;
+        showRankingButton    = EncontrarUI<Button>("ShowRankingButton");
+        closeRankingButton   = EncontrarUI<Button>("CloseRankingButton");
+
+        // Painel de Login
+        usernameInput         = EncontrarUI<TMP_InputField>("UsernameInput");
+        passwordInput         = EncontrarUI<TMP_InputField>("PasswordInput");
+        errorText             = EncontrarUI<TextMeshProUGUI>("ErrorText");
+        loginRegisterButton   = EncontrarUI<Button>("LoginRegisterButton");
+        closeLoginPanelButton = EncontrarUI<Button>("exit");
+
+        // Painel Info
+        welcomeText            = EncontrarUI<TextMeshProUGUI>("WelcomeText");
+        loggedInUserEmblemIcon = EncontrarUI<Image>("EmblemImage");
+        loggedInUserLevelText  = EncontrarUI<TextMeshProUGUI>("LevelText");
+        loggedInUserXpBar      = EncontrarUI<Slider>("XpSlider");
+        loggedInUserXpText     = EncontrarUI<TextMeshProUGUI>("XpText");
+        logoutButton           = EncontrarUI<Button>("LogoutButton");
+        closeInfoPanelButton   = EncontrarUI<Button>("CloseInfoButton");
+    }
+
+    private T EncontrarUI<T>(string objName, bool isGameObject = false) where T : class
+    {
+        Transform[] todosObjetos = Resources.FindObjectsOfTypeAll<Transform>();
+        
+        foreach (Transform obj in todosObjetos)
+        {
+            if (obj.gameObject.scene.isLoaded && obj.name == objName)
+            {
+                if (isGameObject) return obj.gameObject as T;
+                
+                T componente = obj.GetComponent<T>();
+                if (componente != null) return componente;
+            }
+        }
+        
+        Debug.LogError($"[AuthManager] ATENÇÃO: Objeto '{objName}' não encontrado na cena. O nome está idêntico?");
+        return null;
+    }
+
+    // --- CONFIGURAÇÃO DE ESTADO ---
+    private void SetupLoggedOutUI()
+    {
+        if (loggedInInfoPanel != null) loggedInInfoPanel.SetActive(false);
+        if (showRankingButton != null) showRankingButton.gameObject.SetActive(false);
+        if (rankingPanel != null) rankingPanel.SetActive(false);
+        if (showUserInfoButton != null) showUserInfoButton.gameObject.SetActive(false);
+
+        // Configura o botão único para ser o "Jogar Anônimo"
+        if (actionPlayButton != null)
+        {
+            actionPlayButton.gameObject.SetActive(uiMode != UIMode.LoginOnly);
+            actionPlayButton.onClick.RemoveAllListeners();
+            actionPlayButton.onClick.AddListener(StartAnonymousGame);
+            
+            // TextMeshProUGUI removido para dar autonomia ao Editor
+        }
+
+        switch (uiMode)
+        {
+            case UIMode.AnonymousOnly:
+                if (showLoginPanelButton != null) showLoginPanelButton.gameObject.SetActive(false);
+                if (loginPanel != null) loginPanel.SetActive(false);
+                break;
+
+            case UIMode.LoginOnly:
+                if (showLoginPanelButton != null) showLoginPanelButton.gameObject.SetActive(false);
+                if (loginPanel != null) loginPanel.SetActive(true);
+                break;
+
+            case UIMode.Hybrid:
+                if (loginPanel != null) loginPanel.SetActive(false);
+                if (showLoginPanelButton != null) 
+                {
+                    showLoginPanelButton.gameObject.SetActive(true);
+                    showLoginPanelButton.onClick.RemoveAllListeners();
+                    showLoginPanelButton.onClick.AddListener(ToggleLoginPanel);
+                }
+                break;
+        }
+    }
+
+    private void SetupLoggedInUI(string username)
+    {
+        if (loginPanel != null) loginPanel.SetActive(false);
+        if (showLoginPanelButton != null) showLoginPanelButton.gameObject.SetActive(false);
+        if (loggedInInfoPanel != null) loggedInInfoPanel.SetActive(false);
+        
+        if (showRankingButton != null) showRankingButton.gameObject.SetActive(true);
+        if (rankingPanel != null) rankingPanel.SetActive(false);
+
+        if (showUserInfoButton != null) 
+        {
+            showUserInfoButton.gameObject.SetActive(true);
+            showUserInfoButton.onClick.RemoveAllListeners();
+            showUserInfoButton.onClick.AddListener(ToggleLoggedInInfoPanel);
+        }
+
+        // Configura o botão único para ser o "Continuar"
+        if (actionPlayButton != null)
+        {
+            actionPlayButton.gameObject.SetActive(true);
+            actionPlayButton.onClick.RemoveAllListeners();
+            actionPlayButton.onClick.AddListener(ContinueGame);
+            
+            // TextMeshProUGUI removido para dar autonomia ao Editor
+        }
+    }
+
+    // --- FUNÇÕES DE ABRIR/FECHAR PAINÉIS ---
+    public void ToggleLoginPanel()
+    {
+        if (loginPanel != null) 
+        {
+            loginPanel.SetActive(!loginPanel.activeSelf);
+            if (rankingPanel != null) rankingPanel.SetActive(false);
+        }
+    }
+
+    public void ToggleLoggedInInfoPanel()
+    {
+        if (loggedInInfoPanel != null)
+        {
+            bool isActive = !loggedInInfoPanel.activeSelf;
+            if (rankingPanel != null) rankingPanel.SetActive(false);
+            loggedInInfoPanel.SetActive(isActive);
+            if (isActive) { UpdateLoggedInInfoPanel(); }
+        }
+    }
+
+    public void ToggleRankingPanel()
+    {
+        if (rankingPanel != null)
+        {
+            bool isActive = !rankingPanel.activeSelf;
+            if (loggedInInfoPanel != null) loggedInInfoPanel.SetActive(false);
+            if (loginPanel != null) loginPanel.SetActive(false);
+            rankingPanel.SetActive(isActive);
+        }
+    }
+
+    // --- LÓGICA DE DADOS ORIGINAIS ---
     void LoadEmblemAssets()
     {
         emblemSprites = Resources.LoadAll<Sprite>("Game/Emblemas/emblemas_spritesheet");
@@ -121,126 +247,6 @@ public class AuthenticationManager : MonoBehaviour
             Debug.LogError("AuthenticationManager: Sprites de emblema não encontrados em Resources.");
         }
     }
-
-    // --- CONFIGURAÇÃO DE ESTADO (VISIBILIDADE) ---
-
-    private void SetupLoggedOutUI()
-    {
-        // Esconde elementos de "Logado"
-        if (continueButton != null) continueButton.gameObject.SetActive(false);
-        if (loggedInInfoPanel != null) loggedInInfoPanel.SetActive(false);
-        
-        // Esconde Ranking se deslogado
-        if (showRankingButton != null) showRankingButton.gameObject.SetActive(false);
-        if (rankingPanel != null) rankingPanel.SetActive(false);
-        
-        // Lógica do botão duplo (Info/Login)
-        if (showUserInfoButton != null && showUserInfoButton != showLoginPanelButton) 
-            showUserInfoButton.gameObject.SetActive(false);
-
-        switch (uiMode)
-        {
-            case UIMode.AnonymousOnly:
-                if (anonymousStartButton != null) anonymousStartButton.gameObject.SetActive(true);
-                if (showLoginPanelButton != null) showLoginPanelButton.gameObject.SetActive(false);
-                if (loginPanel != null) loginPanel.SetActive(false);
-                break;
-
-            case UIMode.LoginOnly:
-                if (anonymousStartButton != null) anonymousStartButton.gameObject.SetActive(false);
-                if (showLoginPanelButton != null) showLoginPanelButton.gameObject.SetActive(false);
-                if (loginPanel != null) loginPanel.SetActive(true);
-                break;
-
-            case UIMode.Hybrid:
-                if (anonymousStartButton != null) anonymousStartButton.gameObject.SetActive(true);
-                if (loginPanel != null) loginPanel.SetActive(false);
-                
-                if (showLoginPanelButton != null) 
-                {
-                    showLoginPanelButton.gameObject.SetActive(true);
-                    // Remove conexões antigas e adiciona a de abrir login
-                    showLoginPanelButton.onClick.RemoveAllListeners();
-                    showLoginPanelButton.onClick.AddListener(ToggleLoginPanel);
-                }
-                break;
-        }
-    }
-
-    private void SetupLoggedInUI(string username)
-    {
-        // Esconde elementos de "Deslogado"
-        if (anonymousStartButton != null) anonymousStartButton.gameObject.SetActive(false);
-        if (loginPanel != null) loginPanel.SetActive(false);
-
-        if (showLoginPanelButton != null && showLoginPanelButton != showUserInfoButton) 
-            showLoginPanelButton.gameObject.SetActive(false);
-
-        // Mostra elementos de "Logado"
-        if (continueButton != null) continueButton.gameObject.SetActive(true);
-        if (loggedInInfoPanel != null) loggedInInfoPanel.SetActive(false); // Começa fechado
-
-        // Mostra botão de Ranking
-        if (showRankingButton != null) showRankingButton.gameObject.SetActive(true);
-        if (rankingPanel != null) rankingPanel.SetActive(false);
-
-        if (showUserInfoButton != null) 
-        {
-            showUserInfoButton.gameObject.SetActive(true);
-            // Remove conexões antigas e adiciona a de abrir info do usuário
-            showUserInfoButton.onClick.RemoveAllListeners();
-            showUserInfoButton.onClick.AddListener(ToggleLoggedInInfoPanel);
-        }
-    }
-    
-    // --- FUNÇÕES DE ABRIR/FECHAR PAINÉIS ---
-
-    public void StartAnonymousGame()
-    {
-        if (anonymousStartButton != null) anonymousStartButton.interactable = false;
-        if (showLoginPanelButton != null) showLoginPanelButton.interactable = false;
-        LoginSuccess(ANONYMOUS_USER_ID);
-    }
-
-    public void ToggleLoginPanel()
-    {
-        if (loginPanel != null) 
-        {
-            loginPanel.SetActive(!loginPanel.activeSelf);
-            // Fecha outros painéis se estiverem abertos para evitar sobreposição
-            if (rankingPanel != null) rankingPanel.SetActive(false);
-        }
-    }
-
-    public void ToggleLoggedInInfoPanel()
-    {
-        if (loggedInInfoPanel != null)
-        {
-            bool isActive = !loggedInInfoPanel.activeSelf;
-            
-            // Fecha outros painéis
-            if (rankingPanel != null) rankingPanel.SetActive(false);
-
-            loggedInInfoPanel.SetActive(isActive);
-            if (isActive) { UpdateLoggedInInfoPanel(); }
-        }
-    }
-
-    public void ToggleRankingPanel()
-    {
-        if (rankingPanel != null)
-        {
-            bool isActive = !rankingPanel.activeSelf;
-
-            // Fecha outros painéis
-            if (loggedInInfoPanel != null) loggedInInfoPanel.SetActive(false);
-            if (loginPanel != null) loginPanel.SetActive(false);
-
-            rankingPanel.SetActive(isActive);
-        }
-    }
-
-    // --- FUNÇÕES DE ATUALIZAÇÃO DE DADOS ---
 
     private void UpdateLoggedInInfoPanel()
     {
@@ -262,7 +268,6 @@ public class AuthenticationManager : MonoBehaviour
             loggedInUserXpText.text = "XP: " + emblemData.currentXP + " / " + emblemData.xpToNextLevel;
         }
 
-        // Atualiza o ícone com base no nível
         if (loggedInUserEmblemIcon != null && emblemSprites != null && emblemSprites.Length > 0)
         {
             int spriteIndex = emblemData.currentLevel - 1;
@@ -273,14 +278,27 @@ public class AuthenticationManager : MonoBehaviour
     }
 
     // --- LÓGICA DE LOGIN ---
+    public void StartAnonymousGame()
+    {
+        if (actionPlayButton != null) actionPlayButton.interactable = false;
+        if (showLoginPanelButton != null) showLoginPanelButton.interactable = false;
+        LoginSuccess(ANONYMOUS_USER_ID);
+    }
 
     public void OnLoginRegisterClick()
     {
         string username = usernameInput.text;
         string password = passwordInput.text;
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password)) { errorText.text = "Preencha todos os campos."; return; }
+        
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password)) 
+        { 
+            errorText.text = "Preencha todos os campos."; 
+            return; 
+        }
+        
         loginRegisterButton.interactable = false;
         errorText.text = "A processar...";
+        
         if (backendMode == BackendMode.LocalPlayerPrefs) { LoginRegisterLocal(username, password); }
         else if (backendMode == BackendMode.CloudAPI) { LoginRegisterCloud(username, password); }
     }
@@ -288,13 +306,15 @@ public class AuthenticationManager : MonoBehaviour
     private void LoginRegisterLocal(string username, string password)
     {
         string userKey = "user_" + username;
-        if (PlayerPrefs.HasKey(userKey)) {
+        if (PlayerPrefs.HasKey(userKey)) 
+        {
             if (password == PlayerPrefs.GetString(userKey)) LoginSuccess(username);
             else LoginFail("Senha incorreta.");
-        } else {
+        } 
+        else 
+        {
             PlayerPrefs.SetString(userKey, password);
             
-            // Regista na lista mestra para o Ranking
             string registry = PlayerPrefs.GetString("RegisteredUsersRegistry", "");
             if (string.IsNullOrEmpty(registry)) registry = username;
             else if(!registry.Contains(username)) registry += "," + username;
