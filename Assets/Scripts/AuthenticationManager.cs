@@ -3,7 +3,6 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using UnityEngine.UI;
 using System.Linq;
-using System;
 
 public enum UIMode
 {
@@ -24,11 +23,7 @@ public class AuthenticationManager : MonoBehaviour
     public UIMode uiMode = UIMode.Hybrid;
     public BackendMode backendMode = BackendMode.LocalPlayerPrefs;
 
-    [Header("Botão de Ação Híbrido (Exigência do Professor)")]
-    [Tooltip("Este único botão executará o 'Jogar Anônimo' se deslogado, ou 'Continuar' se logado.")]
-    public Button actionPlayButton;
-
-    // --- VARIÁVEIS PRIVADAS (Ocultas do Inspector, mapeadas automaticamente) ---
+    // --- VARIÁVEIS PRIVADAS (Ocultas, mapeadas automaticamente) ---
     private Button showLoginPanelButton;
     private GameObject loginPanel;
     private Button showUserInfoButton;
@@ -56,15 +51,16 @@ public class AuthenticationManager : MonoBehaviour
 
     void Awake()
     {
+        // O Canvas agora é mortal. Não há mais DontDestroyOnLoad aqui.
         LoadEmblemAssets();
     }
 
     void Start()
     {
-        // 1. Mapeamento Automático Profundo
+        // Mapeamento Automático Profundo
         CarregarComponentes();
 
-        // 2. Conexões Estáticas Básicas
+        // Conexões Estáticas Básicas (Apenas para as janelas de painel)
         if (loginRegisterButton != null) loginRegisterButton.onClick.AddListener(OnLoginRegisterClick);
         if (closeLoginPanelButton != null) closeLoginPanelButton.onClick.AddListener(ToggleLoginPanel);
         if (logoutButton != null) logoutButton.onClick.AddListener(Logout);
@@ -72,10 +68,30 @@ public class AuthenticationManager : MonoBehaviour
         if (showRankingButton != null) showRankingButton.onClick.AddListener(ToggleRankingPanel);
         if (closeRankingButton != null) closeRankingButton.onClick.AddListener(ToggleRankingPanel);
 
-        // 3. Avaliação de Estado Absoluto
-        if (GameManager.instance != null && 
-            !string.IsNullOrEmpty(GameManager.instance.currentUserID) && 
-            GameManager.instance.currentUserID != ANONYMOUS_USER_ID)
+        // Inicialização Silenciosa de Estado
+        InicializarAutenticacao();
+    }
+
+    private void InicializarAutenticacao()
+    {
+        if (GameManager.instance == null)
+        {
+            Debug.LogError("[AuthManager] Erro Crítico: GameManager não foi encontrado na cena!");
+            return;
+        }
+
+        // Se não houver usuário ativo, define como Anônimo imediatamente em segundo plano
+        if (string.IsNullOrEmpty(GameManager.instance.currentUserID))
+        {
+            GameManager.instance.currentUserID = ANONYMOUS_USER_ID;
+            if (EmblemManager.instance != null)
+            {
+                EmblemManager.instance.currentUserID = ANONYMOUS_USER_ID;
+            }
+        }
+
+        // Configura a visibilidade dos painéis baseado no usuário atual
+        if (GameManager.instance.currentUserID != ANONYMOUS_USER_ID)
         {
             SetupLoggedInUI(GameManager.instance.currentUserID);
         }
@@ -85,10 +101,9 @@ public class AuthenticationManager : MonoBehaviour
         }
     }
 
-    // --- O NÚCLEO DE MAPEAMENTO (RESOLUÇÃO DO PROBLEMA) ---
+    // --- O NÚCLEO DE MAPEAMENTO ---
     private void CarregarComponentes()
     {
-        // Painéis e Botões Principais
         showLoginPanelButton = EncontrarUI<Button>("ShowLoginPanelButton");
         showUserInfoButton   = EncontrarUI<Button>("ShowLoginPanelButton"); 
         loginPanel           = EncontrarUI<GameObject>("LoginPanel", isGameObject: true) as GameObject;
@@ -97,14 +112,12 @@ public class AuthenticationManager : MonoBehaviour
         showRankingButton    = EncontrarUI<Button>("ShowRankingButton");
         closeRankingButton   = EncontrarUI<Button>("CloseRankingButton");
 
-        // Painel de Login
         usernameInput         = EncontrarUI<TMP_InputField>("UsernameInput");
         passwordInput         = EncontrarUI<TMP_InputField>("PasswordInput");
         errorText             = EncontrarUI<TextMeshProUGUI>("ErrorText");
         loginRegisterButton   = EncontrarUI<Button>("LoginRegisterButton");
         closeLoginPanelButton = EncontrarUI<Button>("exit");
 
-        // Painel Info
         welcomeText            = EncontrarUI<TextMeshProUGUI>("WelcomeText");
         loggedInUserEmblemIcon = EncontrarUI<Image>("EmblemImage");
         loggedInUserLevelText  = EncontrarUI<TextMeshProUGUI>("LevelText");
@@ -128,28 +141,16 @@ public class AuthenticationManager : MonoBehaviour
                 if (componente != null) return componente;
             }
         }
-        
-        Debug.LogError($"[AuthManager] ATENÇÃO: Objeto '{objName}' não encontrado na cena. O nome está idêntico?");
         return null;
     }
 
-    // --- CONFIGURAÇÃO DE ESTADO ---
+    // --- CONFIGURAÇÃO DE ESTADO VISUAL ---
     private void SetupLoggedOutUI()
     {
         if (loggedInInfoPanel != null) loggedInInfoPanel.SetActive(false);
         if (showRankingButton != null) showRankingButton.gameObject.SetActive(false);
         if (rankingPanel != null) rankingPanel.SetActive(false);
         if (showUserInfoButton != null) showUserInfoButton.gameObject.SetActive(false);
-
-        // Configura o botão único para ser o "Jogar Anônimo"
-        if (actionPlayButton != null)
-        {
-            actionPlayButton.gameObject.SetActive(uiMode != UIMode.LoginOnly);
-            actionPlayButton.onClick.RemoveAllListeners();
-            actionPlayButton.onClick.AddListener(StartAnonymousGame);
-            
-            // TextMeshProUGUI removido para dar autonomia ao Editor
-        }
 
         switch (uiMode)
         {
@@ -168,6 +169,10 @@ public class AuthenticationManager : MonoBehaviour
                 if (showLoginPanelButton != null) 
                 {
                     showLoginPanelButton.gameObject.SetActive(true);
+                    
+                    // Vacina Anti-Congelamento
+                    showLoginPanelButton.interactable = true; 
+
                     showLoginPanelButton.onClick.RemoveAllListeners();
                     showLoginPanelButton.onClick.AddListener(ToggleLoginPanel);
                 }
@@ -187,18 +192,12 @@ public class AuthenticationManager : MonoBehaviour
         if (showUserInfoButton != null) 
         {
             showUserInfoButton.gameObject.SetActive(true);
+            
+            // Vacina Anti-Congelamento
+            showUserInfoButton.interactable = true; 
+
             showUserInfoButton.onClick.RemoveAllListeners();
             showUserInfoButton.onClick.AddListener(ToggleLoggedInInfoPanel);
-        }
-
-        // Configura o botão único para ser o "Continuar"
-        if (actionPlayButton != null)
-        {
-            actionPlayButton.gameObject.SetActive(true);
-            actionPlayButton.onClick.RemoveAllListeners();
-            actionPlayButton.onClick.AddListener(ContinueGame);
-            
-            // TextMeshProUGUI removido para dar autonomia ao Editor
         }
     }
 
@@ -277,14 +276,23 @@ public class AuthenticationManager : MonoBehaviour
         }
     }
 
-    // --- LÓGICA DE LOGIN ---
+    // --- MÉTODOS PÚBLICOS DE TRANSIÇÃO (Chamados pelos seus botões externos) ---
     public void StartAnonymousGame()
     {
-        if (actionPlayButton != null) actionPlayButton.interactable = false;
         if (showLoginPanelButton != null) showLoginPanelButton.interactable = false;
-        LoginSuccess(ANONYMOUS_USER_ID);
+        
+        GameManager.instance.currentUserID = ANONYMOUS_USER_ID;
+        if (EmblemManager.instance != null) EmblemManager.instance.currentUserID = ANONYMOUS_USER_ID;
+        
+        SceneManager.LoadScene("SelecaoDeFase");
     }
 
+    public void ContinueGame()
+    {
+        SceneManager.LoadScene("SelecaoDeFase");
+    }
+
+    // --- LÓGICA DE LOGIN/REGISTRO ---
     public void OnLoginRegisterClick()
     {
         string username = usernameInput.text;
@@ -336,7 +344,8 @@ public class AuthenticationManager : MonoBehaviour
         if(errorText != null) errorText.text = "Bem-vindo, " + username + "!";
         
         GameManager.instance.currentUserID = username;
-        EmblemManager.instance.currentUserID = username;
+        if (EmblemManager.instance != null) EmblemManager.instance.currentUserID = username;
+        
         SaveLoadManager.LoadGame(username);
         SceneManager.LoadScene("SelecaoDeFase");
     }
@@ -350,13 +359,13 @@ public class AuthenticationManager : MonoBehaviour
     private void Logout()
     {
         GameManager.instance.currentUserID = null;
-        EmblemManager.instance.currentUserID = null;
-        EmblemManager.instance.playerEmblem = new Emblem(); 
+        if (EmblemManager.instance != null)
+        {
+            EmblemManager.instance.currentUserID = null;
+            EmblemManager.instance.playerEmblem = new Emblem();
+        }
+        
+        // A recarga limpa a cena e oblitera o Canvas obsoleto
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-    }
-
-    private void ContinueGame()
-    {
-        SceneManager.LoadScene("SelecaoDeFase");
     }
 }
