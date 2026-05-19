@@ -341,13 +341,20 @@ public class AuthenticationManager : MonoBehaviour
 
     private void LoginSuccess(string username)
     {
+        // Atualiza o texto de feedback, se ele existir
         if(errorText != null) errorText.text = "Bem-vindo, " + username + "!";
         
+        // Alimenta os Managers imortais com o novo ID
         GameManager.instance.currentUserID = username;
         if (EmblemManager.instance != null) EmblemManager.instance.currentUserID = username;
         
+        // Carrega o progresso do disco para a memória RAM dos Managers
         SaveLoadManager.LoadGame(username);
-        SceneManager.LoadScene("SelecaoDeFase");
+        
+        // --- A MUDANÇA AQUI ---
+        // Ao invés de SceneManager.LoadScene("SelecaoDeFase");
+        // Nós apenas ordenamos que a UI se transforme imediatamente:
+        SetupLoggedInUI(username);
     }
 
     private void LoginFail(string message)
