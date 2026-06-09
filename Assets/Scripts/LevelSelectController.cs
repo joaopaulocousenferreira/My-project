@@ -93,7 +93,6 @@ public class LevelSelectController : MonoBehaviour
             Debug.LogError("Sprite Sheet de emblemas DESBLOQUEADOS não encontrado.");
 
         // B. Carregar Sprites Bloqueados
-        // (Ajuste o caminho se você usou arquivos individuais ou outro nome de pasta)
         lockedEmblemSprites = Resources.LoadAll<Sprite>("Game/Emblemas/Locked/emblemas_locked_spritesheet"); 
         if (lockedEmblemSprites != null && lockedEmblemSprites.Length > 0)
             lockedEmblemSprites = lockedEmblemSprites.OrderBy(s => s.name).ToArray();
@@ -142,16 +141,13 @@ public class LevelSelectController : MonoBehaviour
                 currentButtonUI.unlockedContent.SetActive(true);
                 currentButtonUI.lockIcon.SetActive(false);
 
-                // --- AQUI ESTÁ A LÓGICA DAS ESTRELAS ---
-                // Verifica se o container e os sprites existem
+                // --- LÓGICA DAS ESTRELAS ---
                 if (currentButtonUI.starsContainer != null && starGoldSprite != null && starGreySprite != null)
                 {
                     for (int j = 0; j < currentButtonUI.starsContainer.childCount; j++)
                     {
-                        // Pega o componente de imagem da estrela (filho j)
                         Image starImage = currentButtonUI.starsContainer.GetChild(j).GetComponent<Image>();
                         
-                        // Se o índice da estrela for menor que o total ganho, pinta de ouro. Senão, cinza.
                         if (j < levelData.starsEarned)
                         {
                             starImage.sprite = starGoldSprite;
@@ -303,12 +299,7 @@ public class LevelSelectController : MonoBehaviour
         }
     }
 
-    // --- Navegação ---
-    public void SelectLevel(int levelNumber) 
-    { 
-        if (GameManager.instance != null) { GameManager.instance.currentLevelToLoad = levelNumber; } 
-        SceneManager.LoadScene("FaseDeJogo"); 
-    }
+    // --- Navegação Global ---
     public void GoToMainMenu() 
     { 
         SceneManager.LoadScene("TelaInicial"); 

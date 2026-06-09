@@ -363,16 +363,25 @@ public class AuthenticationManager : MonoBehaviour
         loginRegisterButton.interactable = true;
     }
 
-    private void Logout()
+       private void Logout()
     {
-        GameManager.instance.currentUserID = null;
+        // 1. Volta o ID para o padrão anônimo, NÃO para null
+        GameManager.instance.currentUserID = ANONYMOUS_USER_ID;
+        
+        // 2. FORÇA O RESET DA MEMÓRIA DOS NÍVEIS
+        GameManager.instance.InitializeLevelData(); 
+        
+        // 3. Limpa os dados do Emblema
         if (EmblemManager.instance != null)
         {
-            EmblemManager.instance.currentUserID = null;
+            EmblemManager.instance.currentUserID = ANONYMOUS_USER_ID;
             EmblemManager.instance.playerEmblem = new Emblem();
         }
         
-        // A recarga limpa a cena e oblitera o Canvas obsoleto
+        // 4. Carrega o save do anônimo (se ele jogou antes de alguém logar)
+        SaveLoadManager.LoadGame(ANONYMOUS_USER_ID);
+        
+        // 5. A recarga limpa a cena e volta o UI para o estado LoggedOut
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

@@ -84,9 +84,8 @@ public class GameManager : MonoBehaviour
     /// Configura os dados padrão para todos os níveis na primeira vez que o jogo é executado.
     /// Respeita a regra 'useLevelLocking' definida no Inspector.
     /// </summary>
-    void InitializeLevelData()
+    public void InitializeLevelData()
     {
-        if (initialized) return;
 
         if (levels == null || levels.Length == 0) 
         { 
@@ -113,5 +112,32 @@ public class GameManager : MonoBehaviour
         }
         
         initialized = true; 
+    }
+    public void StartAnonymousSession()
+    {
+        Debug.Log("GameManager: Iniciando sessão Anônima. Limpando dados anteriores...");
+        currentUserID = "Anonimo"; // Define um ID claro para evitar sobrescrever saves de usuários logados
+        
+        // Forçamos o reset das fases para as regras do Inspector
+        InitializeLevelData(); 
+    }
+
+    /// <summary>
+    /// Limpa completamente os dados em memória (útil para botões de "Logout").
+    /// </summary>
+    public void ClearSessionData()
+    {
+        Debug.Log("GameManager: Limpando sessão atual.");
+        currentUserID = "";
+        initialized = false;
+        
+        // Zera o array de níveis
+        if (levels != null)
+        {
+            for (int i = 0; i < levels.Length; i++)
+            {
+                levels[i] = new LevelData();
+            }
+        }
     }
 }
