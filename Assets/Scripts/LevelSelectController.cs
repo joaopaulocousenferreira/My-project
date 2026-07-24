@@ -4,127 +4,119 @@ using TMPro;
 using UnityEngine.UI; 
 using System.Linq; 
 
-//------------------------------------------------------------------//
-// Classe Auxiliar para organizar as referências visuais dos botões //
-//------------------------------------------------------------------//
 [System.Serializable]
 public class LevelButtonUI
 {
-    [Tooltip("O componente Button principal.")]
     public Button buttonComponent;
-    [Tooltip("O GameObject que agrupa o número e as estrelas.")]
     public GameObject unlockedContent;
-    [Tooltip("O GameObject da imagem do cadeado.")]
     public GameObject lockIcon;
-    [Tooltip("A referência direta ao container das estrelas.")]
     public Transform starsContainer;
 }
 
-//------------------------------------------------------------------//
-// Classe Principal                                                 //
-//------------------------------------------------------------------//
 public class LevelSelectController : MonoBehaviour
 {
-    // --- 1. Display Integrado (Canto da Tela) ---
-    [Header("UI do Emblema (Display Integrado)")]
-    public Image displayEmblemIcon;
-    public Slider displayXpBar;
-    public TextMeshProUGUI displayXpText;
-
-    // --- 2. Painel de Informações (Pop-up 1) ---
-    [Header("Painel de Informações (Pop-up 1)")]
-    public GameObject emblemInfoPanel;
-    public Image infoPanelEmblemIcon;
-    public TextMeshProUGUI infoPanelEmblemNameText;
-    public TextMeshProUGUI infoPanelEmblemDescriptionText;
-    public Slider infoPanelXpBar;
-    public TextMeshProUGUI infoPanelXpText;
-
-    // --- 3. Painel de Grade (Pop-up 2) ---
-    [Header("Painel Emblemas Desbloqueados (Pop-up 2)")]
-    public GameObject unlockedEmblemsPanel;
-    public Transform emblemGridContainer; 
-    public GameObject emblemDisplayPrefab; 
-
-    // --- 4. Configurações de Nível e Estrelas ---
+    // --- Referências Preservadas ---
     [Header("Botões e Assets de Nível")]
     public LevelButtonUI[] levelButtons;
     
-    [Header("Sprites das Estrelas (Manual)")]
-    [Tooltip("Arraste aqui o sprite da estrela DOURADA.")]
+    [Header("Sprites das Estrelas")]
     public Sprite starGoldSprite; 
-    [Tooltip("Arraste aqui o sprite da estrela CINZA.")]
     public Sprite starGreySprite; 
-    
-    // --- 5. Dados Carregados Dinamicamente (Privados) ---
+
+    // --- Variáveis Ocultas (Vinculadas por Nome) ---
+    private Image displayEmblemIcon;
+    private Slider displayXpBar;
+    private TextMeshProUGUI displayXpText;
+
+    private GameObject emblemInfoPanel;
+    private Image infoPanelEmblemIcon;
+    private TextMeshProUGUI infoPanelEmblemNameText;
+    private TextMeshProUGUI infoPanelEmblemDescriptionText;
+    private Slider infoPanelXpBar;
+    private TextMeshProUGUI infoPanelXpText;
+
+    private GameObject unlockedEmblemsPanel;
+    private Transform emblemGridContainer; 
+    private GameObject emblemDisplayPrefab; 
+
+    // --- Dados Dinâmicos ---
     private string[] emblemNames;             
     private string[] emblemLevelDescriptions; 
     private Sprite[] unlockedEmblemSprites;   
     private Sprite[] lockedEmblemSprites;     
 
-    // ------------------------------------------------------------------
-
     void Awake() 
-    { 
+    {
+        BindUIElementsByName();
         LoadGameAssets(); 
     }
 
     void Start()
     {
-        // Garante que os painéis pop-up comecem fechados
         if (emblemInfoPanel != null) emblemInfoPanel.SetActive(false);
         if (unlockedEmblemsPanel != null) unlockedEmblemsPanel.SetActive(false);
         
-        // Atualiza toda a interface
         UpdateLevelButtons();
         UpdateEmblemDisplay();
     }
 
     /// <summary>
-    /// Carrega Sprites e Textos da pasta Resources.
+    /// Vincula os componentes baseado puramente em buscas de strings.
+    /// ALERTA: Os GameObjects alvo DEVEM estar ativos na hierarquia durante o Awake.
     /// </summary>
-    void LoadGameAssets()
+    void BindUIElementsByName()
     {
-        // A. Carregar Sprites Desbloqueados
-        unlockedEmblemSprites = Resources.LoadAll<Sprite>("Game/Emblemas/emblemas_spritesheet");
-        if (unlockedEmblemSprites != null && unlockedEmblemSprites.Length > 0)
-            unlockedEmblemSprites = unlockedEmblemSprites.OrderBy(s => s.name).ToArray();
-        else 
-            Debug.LogError("Sprite Sheet de emblemas DESBLOQUEADOS não encontrado.");
+        // 1. Display Integrado
+        displayEmblemIcon = GameObject.Find("EmblemIcon_Display")?.GetComponent<Image>();
+        displayXpBar = GameObject.Find("XpBar_Display")?.GetComponent<Slider>();
+        
+        // Na imagem consta como 'None'. Assumindo um nome padrão para evitar quebra lógica.
+        GameObject displayXpTextObj = GameObject.Find("DisplayXpText"); 
+        if(displayXpTextObj != null) displayXpText = displayXpTextObj.GetComponent<TextMeshProUGUI>();
 
-        // B. Carregar Sprites Bloqueados
-        lockedEmblemSprites = Resources.LoadAll<Sprite>("Game/Emblemas/Locked/emblemas_locked_spritesheet"); 
-        if (lockedEmblemSprites != null && lockedEmblemSprites.Length > 0)
-            lockedEmblemSprites = lockedEmblemSprites.OrderBy(s => s.name).ToArray();
-        else 
-            Debug.LogError("Sprite Sheet de emblemas BLOQUEADOS não encontrado.");
+        // 2. Pop-up 1 (Informações)
+        emblemInfoPanel = GameObject.Find("EmblemInfoPanel");
+        infoPanelEmblemIcon = GameObject.Find("InfoPanel_EmblemIcon")?.GetComponent<Image>();
+        infoPanelEmblemNameText = GameObject.Find("InfoPanel_EmblemNameText")?.GetComponent<TextMeshProUGUI>();
+        infoPanelEmblemDescriptionText = GameObject.Find("InfoPanel_DescriptionText")?.GetComponent<TextMeshProUGUI>();
+        infoPanelXpBar = GameObject.Find("InfoPanel_XpBar")?.GetComponent<Slider>();
+        infoPanelXpText = GameObject.Find("InfoPanel_XpText")?.GetComponent<TextMeshProUGUI>();
 
-        // C. Carregar Nomes (.txt)
-        TextAsset namesFile = Resources.Load<TextAsset>("Game/Text/emblem_names");
-        if (namesFile != null)
+        // 3. Pop-up 2 (Grade de Desbloqueados)
+        unlockedEmblemsPanel = GameObject.Find("UnlockedEmblemsPanel");
+        emblemGridContainer = GameObject.Find("EmblemGrid")?.GetComponent<RectTransform>();
+        
+        // Prefabs não podem ser achados com GameObject.Find. Deve ser carregado de Resources.
+        emblemDisplayPrefab = Resources.Load<GameObject>("UI/EmblemDisplayItem_Template");
+        if (emblemDisplayPrefab == null)
         {
-            emblemNames = namesFile.text.Split(';');
-        }
-        else
-        {
-            emblemNames = new string[] { "Nível 1", "Nível 2", "Nível 3", "Nível 4", "Nível 5", "Nível 6" };
-        }
-
-        // D. Carregar Descrições (.txt)
-        TextAsset descFile = Resources.Load<TextAsset>("Game/Text/emblem_descriptions");
-        if (descFile != null)
-        {
-            emblemLevelDescriptions = descFile.text.Split(';');
-        }
-        else
-        {
-            emblemLevelDescriptions = new string[] { "Continue jogando!" };
+            Debug.LogError("Falha estrutural: O Prefab 'EmblemDisplayItem_Template' deve estar localizado em uma pasta 'Resources/UI/'.");
         }
     }
 
-    /// <summary>
-    /// Atualiza o estado visual dos botões de nível (Bloqueio + Estrelas).
-    /// </summary>
+    void LoadGameAssets()
+    {
+        unlockedEmblemSprites = Resources.LoadAll<Sprite>("Game/Emblemas/emblemas_spritesheet");
+        if (unlockedEmblemSprites != null && unlockedEmblemSprites.Length > 0)
+            unlockedEmblemSprites = unlockedEmblemSprites.OrderBy(s => s.name).ToArray();
+
+        lockedEmblemSprites = Resources.LoadAll<Sprite>("Game/Emblemas/Locked/emblemas_locked_spritesheet"); 
+        if (lockedEmblemSprites != null && lockedEmblemSprites.Length > 0)
+            lockedEmblemSprites = lockedEmblemSprites.OrderBy(s => s.name).ToArray();
+
+        TextAsset namesFile = Resources.Load<TextAsset>("Game/Text/emblem_names");
+        if (namesFile != null)
+            emblemNames = namesFile.text.Split(';');
+        else
+            emblemNames = new string[] { "Nível 1", "Nível 2", "Nível 3", "Nível 4", "Nível 5", "Nível 6" };
+
+        TextAsset descFile = Resources.Load<TextAsset>("Game/Text/emblem_descriptions");
+        if (descFile != null)
+            emblemLevelDescriptions = descFile.text.Split(';');
+        else
+            emblemLevelDescriptions = new string[] { "Continue jogando!" };
+    }
+
     void UpdateLevelButtons() 
     {
         if (GameManager.instance == null) return;
@@ -136,44 +128,31 @@ public class LevelSelectController : MonoBehaviour
 
             if (levelData.isUnlocked)
             {
-                // --- NÍVEL DESBLOQUEADO ---
                 currentButtonUI.buttonComponent.interactable = true;
                 currentButtonUI.unlockedContent.SetActive(true);
                 currentButtonUI.lockIcon.SetActive(false);
 
-                // --- LÓGICA DAS ESTRELAS ---
                 if (currentButtonUI.starsContainer != null && starGoldSprite != null && starGreySprite != null)
                 {
                     for (int j = 0; j < currentButtonUI.starsContainer.childCount; j++)
                     {
                         Image starImage = currentButtonUI.starsContainer.GetChild(j).GetComponent<Image>();
-                        
-                        if (j < levelData.starsEarned)
-                        {
-                            starImage.sprite = starGoldSprite;
-                        }
-                        else
-                        {
-                            starImage.sprite = starGreySprite;
-                        }
+                        starImage.sprite = (j < levelData.starsEarned) ? starGoldSprite : starGreySprite;
                     }
                 }
             }
             else
             {
-                // --- NÍVEL BLOQUEADO ---
                 currentButtonUI.buttonComponent.interactable = false;
                 currentButtonUI.unlockedContent.SetActive(false);
                 currentButtonUI.lockIcon.SetActive(true);
             }
         }
-     }
-    
-    // --- Funções de Display e Painéis ---
+    }
 
     void UpdateEmblemDisplay() 
     {
-        if (EmblemManager.instance == null) { return; }
+        if (EmblemManager.instance == null) return;
         Emblem emblemData = EmblemManager.instance.playerEmblem;
 
         if(displayXpBar != null)
@@ -184,21 +163,19 @@ public class LevelSelectController : MonoBehaviour
         if(displayXpText != null) displayXpText.text = emblemData.currentXP + " / " + emblemData.xpToNextLevel + " XP";
         
         UpdateEmblemIcon(displayEmblemIcon, emblemData);
-     }
+    }
 
     void UpdateEmblemInfoPanelContent() 
     {
-        if (EmblemManager.instance == null) { return; }
+        if (EmblemManager.instance == null) return;
         Emblem emblemData = EmblemManager.instance.playerEmblem;
 
-        // 1. Nome
         if(infoPanelEmblemNameText != null && emblemNames != null && emblemNames.Length > 0)
         {
             int nameIndex = Mathf.Clamp(emblemData.currentLevel - 1, 0, emblemNames.Length - 1);
             infoPanelEmblemNameText.text = emblemNames[nameIndex];
         }
 
-        // 2. XP
         if(infoPanelXpBar != null)
         {
             infoPanelXpBar.maxValue = emblemData.xpToNextLevel;
@@ -206,10 +183,8 @@ public class LevelSelectController : MonoBehaviour
         }
         if(infoPanelXpText != null) infoPanelXpText.text = emblemData.currentXP + " / " + emblemData.xpToNextLevel + " XP";
         
-        // 3. Ícone
         UpdateEmblemIcon(infoPanelEmblemIcon, emblemData);
 
-        // 4. Descrição
         if (infoPanelEmblemDescriptionText != null && emblemLevelDescriptions != null && emblemLevelDescriptions.Length > 0)
         {
             int descriptionIndex = Mathf.Clamp(emblemData.currentLevel - 1, 0, emblemLevelDescriptions.Length - 1);
@@ -219,20 +194,16 @@ public class LevelSelectController : MonoBehaviour
         {
              infoPanelEmblemDescriptionText.text = "Continue jogando para evoluir!";
         }
-     }
+    }
 
     void UpdateEmblemIcon(Image iconImage, Emblem emblemData)
     {
          if (iconImage != null && unlockedEmblemSprites != null && unlockedEmblemSprites.Length > 0)
         {
-            int spriteIndex = emblemData.currentLevel - 1;
-            spriteIndex = Mathf.Min(spriteIndex, unlockedEmblemSprites.Length - 1);
-            spriteIndex = Mathf.Max(spriteIndex, 0);
+            int spriteIndex = Mathf.Clamp(emblemData.currentLevel - 1, 0, unlockedEmblemSprites.Length - 1);
             iconImage.sprite = unlockedEmblemSprites[spriteIndex];
         }
     }
-
-    // --- Controle de Abertura/Fechamento ---
 
     public void ToggleEmblemInfoPanel()
     {
@@ -299,7 +270,6 @@ public class LevelSelectController : MonoBehaviour
         }
     }
 
-    // --- Navegação Global ---
     public void GoToMainMenu() 
     { 
         SceneManager.LoadScene("TelaInicial"); 
