@@ -4,18 +4,40 @@ using TMPro;
 using UnityEngine.UI; 
 using System.Linq; 
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 [System.Serializable]
 public class LevelButtonUI
 {
-    public Button buttonComponent;
-    public GameObject unlockedContent;
-    public GameObject lockIcon;
-    public Transform starsContainer;
+    public Button buttonComponent; 
+    
+    private GameObject unlockedContent;
+    private GameObject lockIcon;
+    private Transform starsContainer;
+
+    public GameObject UnlockedContent => unlockedContent;
+    public GameObject LockIcon => lockIcon;
+    public Transform StarsContainer => starsContainer;
+
+    public void BindChildrenByName()
+    {
+        if (buttonComponent == null) return;
+        
+        Transform[] allChildren = buttonComponent.GetComponentsInChildren<Transform>(true);
+        
+        foreach (Transform child in allChildren)
+        {
+            if (child.name == "UnlockedContent") unlockedContent = child.gameObject;
+            else if (child.name == "LockIcon") lockIcon = child.gameObject;
+            else if (child.name == "StarsContainer") starsContainer = child;
+        }
+    }
 }
 
 public class LevelSelectController : MonoBehaviour
 {
-    // --- Referências Preservadas ---
     [Header("Botões e Assets de Nível")]
     public LevelButtonUI[] levelButtons;
     
@@ -23,7 +45,12 @@ public class LevelSelectController : MonoBehaviour
     public Sprite starGoldSprite; 
     public Sprite starGreySprite; 
 
-    // --- Variáveis Ocultas (Vinculadas por Nome) ---
+    // Ocultado do Inspector para evitar interação manual. Serializado para persistir na Build.
+    [HideInInspector]
+    [SerializeField] 
+    private GameObject emblemDisplayPrefab; 
+
+    // --- Variáveis Ocultas ---
     private Image displayEmblemIcon;
     private Slider displayXpBar;
     private TextMeshProUGUI displayXpText;
@@ -37,7 +64,6 @@ public class LevelSelectController : MonoBehaviour
 
     private GameObject unlockedEmblemsPanel;
     private Transform emblemGridContainer; 
-    private GameObject emblemDisplayPrefab; 
 
     // --- Dados Dinâmicos ---
     private string[] emblemNames;             
@@ -45,8 +71,33 @@ public class LevelSelectController : MonoBehaviour
     private Sprite[] unlockedEmblemSprites;   
     private Sprite[] lockedEmblemSprites;     
 
+#if UNITY_EDITOR
+    /// <summary>
+    /// Automatiza a busca do Prefab sem intervenção manual (Drag and Drop).
+    /// Executado automaticamente pelo Editor sempre que o script é atualizado ou a cena é modificada.
+    /// </summary>
+    void OnValidate()
+    {
+        if (emblemDisplayPrefab == null)
+        {
+            string prefabPath = "Assets/Prefabs/EmblemDisplayItem_Template.prefab";
+            emblemDisplayPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            
+            if (emblemDisplayPrefab == null)
+            {
+                Debug.LogWarning($"[Automated Binding] Falha ao localizar o prefab no caminho estrito: {prefabPath}");
+            }
+        }
+    }
+#endif
+
     void Awake() 
     {
+        if (emblemDisplayPrefab == null)
+        {
+            Debug.LogError("Falha fatal estrutural: O Prefab 'EmblemDisplayItem_Template' não foi alocado na compilação.");
+        }
+
         BindUIElementsByName();
         LoadGameAssets(); 
     }
@@ -60,37 +111,32 @@ public class LevelSelectController : MonoBehaviour
         UpdateEmblemDisplay();
     }
 
-    /// <summary>
-    /// Vincula os componentes baseado puramente em buscas de strings.
-    /// ALERTA: Os GameObjects alvo DEVEM estar ativos na hierarquia durante o Awake.
-    /// </summary>
     void BindUIElementsByName()
     {
-        // 1. Display Integrado
-        displayEmblemIcon = GameObject.Find("EmblemIcon_Display")?.GetComponent<Image>();
-        displayXpBar = GameObject.Find("XpBar_Display")?.GetComponent<Slider>();
-        
-        // Na imagem consta como 'None'. Assumindo um nome padrão para evitar quebra lógica.
-        GameObject displayXpTextObj = GameObject.Find("DisplayXpText"); 
-        if(displayXpTextObj != null) displayXpText = displayXpTextObj.GetComponent<TextMeshProUGUI>();
-
-        // 2. Pop-up 1 (Informações)
-        emblemInfoPanel = GameObject.Find("EmblemInfoPanel");
-        infoPanelEmblemIcon = GameObject.Find("InfoPanel_EmblemIcon")?.GetComponent<Image>();
-        infoPanelEmblemNameText = GameObject.Find("InfoPanel_EmblemNameText")?.GetComponent<TextMeshProUGUI>();
-        infoPanelEmblemDescriptionText = GameObject.Find("InfoPanel_DescriptionText")?.GetComponent<TextMeshProUGUI>();
-        infoPanelXpBar = GameObject.Find("InfoPanel_XpBar")?.GetComponent<Slider>();
-        infoPanelXpText = GameObject.Find("InfoPanel_XpText")?.GetComponent<TextMeshProUGUI>();
-
-        // 3. Pop-up 2 (Grade de Desbloqueados)
-        unlockedEmblemsPanel = GameObject.Find("UnlockedEmblemsPanel");
-        emblemGridContainer = GameObject.Find("EmblemGrid")?.GetComponent<RectTransform>();
-        
-        // Prefabs não podem ser achados com GameObject.Find. Deve ser carregado de Resources.
-        emblemDisplayPrefab = Resources.Load<GameObject>("UI/EmblemDisplayItem_Template");
-        if (emblemDisplayPrefab == null)
+        for (int i = 0; i < levelButtons.Length; i++)
         {
-            Debug.LogError("Falha estrutural: O Prefab 'EmblemDisplayItem_Template' deve estar localizado em uma pasta 'Resources/UI/'.");
+            levelButtons[i].BindChildrenByName();
+        }
+
+        Transform rootCanvas = this.transform.root;
+        Transform[] allUIElements = rootCanvas.GetComponentsInChildren<Transform>(true);
+
+        foreach (Transform t in allUIElements)
+        {
+            switch (t.name)
+            {
+                case "EmblemIcon_Display": displayEmblemIcon = t.GetComponent<Image>(); break;
+                case "XpBar_Display": displayXpBar = t.GetComponent<Slider>(); break;
+                case "DisplayXpText": displayXpText = t.GetComponent<TextMeshProUGUI>(); break;
+                case "EmblemInfoPanel": emblemInfoPanel = t.gameObject; break;
+                case "InfoPanel_EmblemIcon": infoPanelEmblemIcon = t.GetComponent<Image>(); break;
+                case "InfoPanel_EmblemNameText": infoPanelEmblemNameText = t.GetComponent<TextMeshProUGUI>(); break;
+                case "InfoPanel_DescriptionText": infoPanelEmblemDescriptionText = t.GetComponent<TextMeshProUGUI>(); break;
+                case "InfoPanel_XpBar": infoPanelXpBar = t.GetComponent<Slider>(); break;
+                case "InfoPanel_XpText": infoPanelXpText = t.GetComponent<TextMeshProUGUI>(); break;
+                case "UnlockedEmblemsPanel": unlockedEmblemsPanel = t.gameObject; break;
+                case "EmblemGrid": emblemGridContainer = t.GetComponent<RectTransform>(); break;
+            }
         }
     }
 
@@ -129,14 +175,14 @@ public class LevelSelectController : MonoBehaviour
             if (levelData.isUnlocked)
             {
                 currentButtonUI.buttonComponent.interactable = true;
-                currentButtonUI.unlockedContent.SetActive(true);
-                currentButtonUI.lockIcon.SetActive(false);
+                if (currentButtonUI.UnlockedContent != null) currentButtonUI.UnlockedContent.SetActive(true);
+                if (currentButtonUI.LockIcon != null) currentButtonUI.LockIcon.SetActive(false);
 
-                if (currentButtonUI.starsContainer != null && starGoldSprite != null && starGreySprite != null)
+                if (currentButtonUI.StarsContainer != null && starGoldSprite != null && starGreySprite != null)
                 {
-                    for (int j = 0; j < currentButtonUI.starsContainer.childCount; j++)
+                    for (int j = 0; j < currentButtonUI.StarsContainer.childCount; j++)
                     {
-                        Image starImage = currentButtonUI.starsContainer.GetChild(j).GetComponent<Image>();
+                        Image starImage = currentButtonUI.StarsContainer.GetChild(j).GetComponent<Image>();
                         starImage.sprite = (j < levelData.starsEarned) ? starGoldSprite : starGreySprite;
                     }
                 }
@@ -144,8 +190,8 @@ public class LevelSelectController : MonoBehaviour
             else
             {
                 currentButtonUI.buttonComponent.interactable = false;
-                currentButtonUI.unlockedContent.SetActive(false);
-                currentButtonUI.lockIcon.SetActive(true);
+                if (currentButtonUI.UnlockedContent != null) currentButtonUI.UnlockedContent.SetActive(false);
+                if (currentButtonUI.LockIcon != null) currentButtonUI.LockIcon.SetActive(true);
             }
         }
     }
